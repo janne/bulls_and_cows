@@ -3,14 +3,16 @@ import 'package:flutter/material.dart';
 class NumberButton extends StatelessWidget {
   final int number;
   final void Function(int button) onPressed;
+  final bool disabled;
 
-  const NumberButton({super.key, required this.onPressed, required this.number});
+  const NumberButton({super.key, required this.onPressed, required this.number, required this.disabled});
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.headlineMedium!;
     return Expanded(
       child: InkResponse(
-        onTapDown: (_) => onPressed(number),
+        onTapDown: (_) => disabled ? () {} : onPressed(number),
         child: Container(
           alignment: Alignment.center,
           margin: const EdgeInsets.all(8),
@@ -26,7 +28,7 @@ class NumberButton extends StatelessWidget {
             color: Colors.grey[200],
             borderRadius: const BorderRadius.all(Radius.circular(24)),
           ),
-          child: Text(number.toString(), style: Theme.of(context).textTheme.headlineMedium),
+          child: Text(number.toString(), style: disabled ? textStyle.copyWith(color: Colors.grey) : textStyle),
         ),
       ),
     );

@@ -17,11 +17,13 @@ class _GameState extends State<Game> {
   (int?, int?, int?, int?) guess = (null, null, null, null);
   List<GuessResult> results = [];
   late (int, int, int, int) code;
+  late Set<(int, int, int, int)> alternatives;
 
   @override
   initState() {
     super.initState();
     code = _generateCode();
+    alternatives = _generatePermutations();
   }
 
   onSelect(int i) {
@@ -48,24 +50,63 @@ class _GameState extends State<Game> {
     });
   }
 
-  void _onReturn() {
-    final (a, b, c, d) = guess;
-    final guessList = [a, b, c, d];
-    if (guessList.any((e) => e == null)) return;
+  List<int> recToList((int, int, int, int) rec) {
+    final (a, b, c, d) = rec;
+    return [a, b, c, d];
+  }
 
-    final (x, y, z, q) = code;
-    final codeList = [x, y, z, q];
-
-    final (bulls, cows) = guessList.indexed.fold((0, 0), (pair, item) {
+  (int, int) _getBullsAndCows((int, int, int, int) code) {
+    final guessList = recToList(guess as (int, int, int, int));
+    final codeList = recToList(code);
+    return guessList.indexed.fold((0, 0), (pair, item) {
       final (i, c) = item;
       var (bulls, cows) = pair;
       if (codeList[i] == c) return (bulls + 1, cows);
       if (codeList.contains(c)) return (bulls, cows + 1);
       return (bulls, cows);
     });
+  }
+
+  void _onReturn() {
+    final (a, b, c, d) = guess;
+    if (a == null || b == null || c == null || d == null) return;
+    final (bulls, cows) = _getBullsAndCows(code);
+    _cleanAlternatives(bulls, cows);
     setState(() {
       results.add((guess: guess as (int, int, int, int), bulls: bulls, cows: cows));
       guess = (null, null, null, null);
+    });
+  }
+
+  Set<(int, int, int, int)> _generatePermutations() {
+    Set<(int, int, int, int)> result = {};
+    List<int> usedNumbers = [];
+
+    void generate(List<int> current) {
+      if (current.length == 4) {
+        result.add((current[0], current[1], current[2], current[3]));
+        return;
+      }
+
+      for (int i = 0; i < 10; i++) {
+        if (!usedNumbers.contains(i)) {
+          usedNumbers.add(i);
+          current.add(i);
+          generate(current);
+          current.removeLast();
+          usedNumbers.removeLast();
+        }
+      }
+    }
+
+    generate([]);
+
+    return result;
+  }
+
+  void _cleanAlternatives(int bulls, int cows) {
+    setState(() {
+      alternatives = alternatives.where((alt) => _getBullsAndCows(alt) == (bulls, cows)).toSet();
     });
   }
 
@@ -75,6 +116,7 @@ class _GameState extends State<Game> {
       guess = (null, null, null, null);
       selected = 0;
       code = _generateCode();
+      alternatives = _generatePermutations();
     });
   }
 
@@ -102,14 +144,22 @@ class _GameState extends State<Game> {
               ),
             ),
             if (won) ElevatedButton(onPressed: _newGame, child: const Text("New game")),
+            if (!won) Text("${alternatives.length} possible alternative${alternatives.length > 1 ? 's' : ''}"),
             if (!won)
               Keyboard(
                 onPress: _onKeyboardPress,
                 onReturn: _onReturn,
+                disabled: _getDisabled(),
               ),
           ],
         ),
       ),
     );
   }
+
+  Set<int> _getDisabled() => alternatives.fold({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, (disabled, alt) {
+        final (a, b, c, d) = alt;
+        disabled.removeAll({a, b, c, d});
+        return disabled;
+      });
 }
